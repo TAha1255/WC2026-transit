@@ -1,63 +1,55 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { VENUES } from '@/lib/venues'
+import { LANGUAGES, t } from '@/lib/i18n'
 
-// ── helpers ──────────────────────────────────────
-const ft = iso => { try { return new Date(iso).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', hour12: false }) } catch { return '--:--' } }
-const fd = m => !m && m !== 0 ? '--' : m >= 60 ? `${Math.floor(m / 60)}س ${m % 60}د` : `${m}د`
+const ft = iso => { try { return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) } catch { return '--:--' } }
+const fd = (m, lang) => !m && m !== 0 ? '--' : m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`
 
 const MODE_ICONS  = { WALK: '🚶', BUS: '🚌', TRAIN: '🚆', METRO: '🚇', BIKE: '🚲', SHUTTLE: '🚐' }
 const MODE_COLORS = { WALK: '#f59e0b', BUS: '#3b82f6', TRAIN: '#a78bfa', METRO: '#06b6d4', BIKE: '#34d399', SHUTTLE: '#60a5fa' }
-const STRATS = {
-  fastest:        { label: '⚡ الأسرع',       color: '#f59e0b' },
-  minimal_stress: { label: '🧘 الأهدأ',       color: '#06b6d4' },
-  local_secret:   { label: '🗝️ السر المحلي', color: '#a78bfa' },
-}
 
-// ── ALSDT (client-side instant calc) ─────────────
 function calcALSDT(kickoffISO, venue) {
   if (!kickoffISO || !venue) return null
   const kickoff  = new Date(kickoffISO)
-  const totalMin = 30 + venue.security_wait + 15 + (venue.transit_context.includes('25min') ? 25 : 35) + 10
+  const totalMin = 30 + venue.security_wait + 15 + 35 + 10
   return new Date(kickoff.getTime() - totalMin * 60000)
 }
 
-// ── iCal export ───────────────────────────────────
-function exportICS(venue, match, alsdt) {
+function exportICS(venue, match, alsdt, lang) {
   const fmt = iso => new Date(iso).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
   const ics = [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//WC2026//AR',
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//WC2026//EN',
     'BEGIN:VEVENT',
     `UID:alsdt-${venue.id}-${Date.now()}@wc2026`,
     `DTSTART:${fmt(alsdt)}`,
     `DTEND:${fmt(new Date(new Date(alsdt).getTime() + 10 * 60000))}`,
-    `SUMMARY:🚨 آخر موعد للمغادرة — ${venue.name_ar}`,
+    `SUMMARY:🚨 ${t(lang, 'alsdt')} — ${venue.name_en}`,
     `DESCRIPTION:${match.label_ar}`,
-    'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', 'DESCRIPTION:استعد للمغادرة!', 'END:VALARM',
-    'END:VEVENT',
+    'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY',
+    `DESCRIPTION:${t(lang, 'alsdt_warn')}`,
+    'END:VALARM', 'END:VEVENT',
     'BEGIN:VEVENT',
     `UID:kickoff-${venue.id}-${Date.now()}@wc2026`,
     `DTSTART:${fmt(match.date)}`,
     `DTEND:${fmt(new Date(new Date(match.date).getTime() + 110 * 60000))}`,
-    `SUMMARY:${match.label_ar} — ${venue.name_ar} ${venue.flag}`,
-    'END:VEVENT',
-    'END:VCALENDAR',
+    `SUMMARY:${match.label_ar} — ${venue.name_en} ${venue.flag}`,
+    'END:VEVENT', 'END:VCALENDAR',
   ].join('\r\n')
   const a = document.createElement('a')
-  a.href  = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }))
+  a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }))
   a.download = `wc2026-${venue.id}.ics`
   a.click()
 }
 
-// ── styles ────────────────────────────────────────
-const S = {
-  inp: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '9px 12px', color: '#e2e8f0', fontFamily: "'IBM Plex Sans Arabic', monospace", fontSize: '12px', width: '100%', boxSizing: 'border-box', outline: 'none', direction: 'rtl' },
-  lbl: { color: '#475569', fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.12em', marginBottom: '5px', display: 'block' },
-  btn: (active, color = '#f59e0b') => ({ padding: '11px', background: active ? `rgba(${color === '#f59e0b' ? '245,158,11' : '6,182,212'},0.12)` : 'rgba(255,255,255,0.02)', border: `1px solid ${active ? color + '55' : 'rgba(255,255,255,0.07)'}`, borderRadius: '8px', color: active ? color : '#475569', fontFamily: "'IBM Plex Sans Arabic', monospace", fontSize: '12px', cursor: 'pointer', transition: 'all 0.15s', fontWeight: active ? 700 : 400 }),
-}
+const STRATS = (lang) => ({
+  fastest:        { label: t(lang, 'fastest'), color: '#f59e0b' },
+  minimal_stress: { label: t(lang, 'minimal'), color: '#06b6d4' },
+  local_secret:   { label: t(lang, 'secret'),  color: '#a78bfa' },
+})
 
-// ════════════════════════════════════════════════
 export default function Home() {
+  const [lang,        setLang]        = useState('ar')
   const [venueId,     setVenueId]     = useState('metlife')
   const [matchIdx,    setMatchIdx]    = useState(0)
   const [origin,      setOrigin]      = useState('')
@@ -69,9 +61,11 @@ export default function Home() {
   const [clock,       setClock]       = useState('')
   const [copied,      setCopied]      = useState(false)
 
+  const dir = LANGUAGES[lang].dir
+
   useEffect(() => {
-    const t = setInterval(() => setClock(new Date().toLocaleTimeString('en-GB', { hour12: false })), 1000)
-    return () => clearInterval(t)
+    const timer = setInterval(() => setClock(new Date().toLocaleTimeString('en-GB', { hour12: false })), 1000)
+    return () => clearInterval(timer)
   }, [])
 
   useEffect(() => {
@@ -83,6 +77,7 @@ export default function Home() {
   const venue  = VENUES[venueId]
   const match  = venue.matches[matchIdx]
   const alsdt  = calcALSDT(match.date, venue)
+  const strats = STRATS(lang)
   const steps  = result?.strategies?.[activeStrat]?.steps || []
 
   async function generate() {
@@ -92,95 +87,108 @@ export default function Home() {
       const res = await fetch('/api/itinerary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ origin, venueId, matchDate: match.date, mobility }),
+        body: JSON.stringify({ origin, venueId, matchDate: match.date, mobility, lang }),
       })
       const data = await res.json()
-      if (!data.success) throw new Error(data.error)
+      if (!data.success) throw new Error(data.error || t(lang, 'error'))
       setResult(data.itinerary)
     } catch (e) {
-      setError(e.message || 'حدث خطأ غير متوقع')
+      setError(e.message)
     } finally {
-      setLoading(false)
-    }
+      setLoading(false) }
   }
 
   async function copyPlan() {
-    const txt = `🏆 WC2026\n${venue.name_ar} ${venue.flag}\n${match.label_ar}\n⏰ ALSDT: ${alsdt ? ft(alsdt.toISOString()) : '--'}\n${steps.map(s => `• ${s.instruction_ar}`).join('\n') || '— ولّد خطة أولاً'}`
+    const txt = `🏆 WC2026\n${venue.name_en} ${venue.flag}\n${match.label_ar}\n⏰ ${t(lang,'alsdt')}: ${alsdt ? ft(alsdt.toISOString()) : '--'}\n${steps.map(s => `• ${s.instruction_ar}`).join('\n') || '--'}`
     await navigator.clipboard.writeText(txt).catch(() => {})
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
-  return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '18px 14px' }}>
+  const inp = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '9px 12px', color: '#e2e8f0', fontFamily: "'IBM Plex Sans Arabic', monospace", fontSize: '12px', width: '100%', boxSizing: 'border-box', outline: 'none', direction: dir }
+  const lbl = { color: '#475569', fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.12em', marginBottom: '5px', display: 'block', textAlign: dir === 'rtl' ? 'right' : 'left' }
 
-      {/* ── HEADER ── */}
+  return (
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '18px 14px', direction: dir }}>
+
+      {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '1px solid rgba(245,158,11,0.12)', paddingBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 10px #f59e0b', animation: 'pulse 2s infinite' }} />
-            <span style={{ color: '#334155', fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.15em' }}>WC2026 TRANSIT AI · POWERED BY CLAUDE</span>
+            <span style={{ color: '#334155', fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.15em' }}>WC2026 TRANSIT AI · {t(lang, 'powered').toUpperCase()}</span>
           </div>
-          <h1 style={{ margin: 0, fontFamily: "'IBM Plex Sans Arabic', sans-serif", fontSize: 'clamp(18px,4vw,26px)', fontWeight: 700, color: '#f8fafc', direction: 'rtl' }}>
-            🏆 محرك التنقل التنبؤي — كأس العالم ٢٠٢٦
+          <h1 style={{ margin: 0, fontSize: 'clamp(16px,4vw,24px)', fontWeight: 700, color: '#f8fafc' }}>
+            🏆 {t(lang, 'title')}
           </h1>
+          <p style={{ margin: '4px 0 0', color: '#475569', fontSize: '11px' }}>{t(lang, 'subtitle')}</p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontFamily: 'monospace', fontSize: 'clamp(18px,3vw,28px)', fontWeight: 700, color: '#f59e0b' }}>{clock}</div>
+          <div style={{ fontFamily: 'monospace', fontSize: '24px', fontWeight: 700, color: '#f59e0b' }}>{clock}</div>
           {alsdt && <div style={{ color: '#ef4444', fontFamily: 'monospace', fontSize: '10px', marginTop: '2px' }}>ALSDT <span style={{ fontWeight: 700 }}>{ft(alsdt.toISOString())}</span></div>}
         </div>
       </div>
 
-      {/* ── VENUE TABS ── */}
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
-        {Object.values(VENUES).map(v => (
-          <button key={v.id} onClick={() => setVenueId(v.id)}
-            style={{ padding: '8px 12px', borderRadius: '8px', border: `1px solid ${venueId === v.id ? '#f59e0b55' : 'rgba(255,255,255,0.06)'}`, background: venueId === v.id ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.02)', color: venueId === v.id ? '#f59e0b' : '#334155', fontFamily: "'IBM Plex Sans Arabic', sans-serif", fontSize: '11px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-            <span style={{ fontSize: '16px' }}>{v.flag}</span>
-            <span style={{ fontWeight: venueId === v.id ? 700 : 400 }}>{v.city_ar}</span>
+      {/* LANGUAGE SWITCHER */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', justifyContent: dir === 'rtl' ? 'flex-start' : 'flex-start' }}>
+        {Object.entries(LANGUAGES).map(([code, l]) => (
+          <button key={code} onClick={() => setLang(code)}
+            style={{ padding: '6px 12px', borderRadius: '6px', border: `1px solid ${lang === code ? '#f59e0b55' : 'rgba(255,255,255,0.08)'}`, background: lang === code ? 'rgba(245,158,11,0.12)' : 'transparent', color: lang === code ? '#f59e0b' : '#475569', fontFamily: 'monospace', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            {l.flag} {l.label}
           </button>
         ))}
       </div>
 
-      {/* ── VENUE INFO ── */}
+      {/* VENUE TABS */}
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
+        {Object.values(VENUES).map(v => (
+          <button key={v.id} onClick={() => setVenueId(v.id)}
+            style={{ padding: '8px 12px', borderRadius: '8px', border: `1px solid ${venueId === v.id ? '#f59e0b55' : 'rgba(255,255,255,0.06)'}`, background: venueId === v.id ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.02)', color: venueId === v.id ? '#f59e0b' : '#334155', fontSize: '11px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+            <span style={{ fontSize: '16px' }}>{v.flag}</span>
+            <span style={{ fontWeight: venueId === v.id ? 700 : 400 }}>{v.city[lang] || v.city.en}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* VENUE INFO */}
       <div style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.12)', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ color: '#fcd34d', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700 }}>{venue.name_ar} {venue.flag}</span>
+        <span style={{ color: '#fcd34d', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700 }}>{venue.name_en} {venue.flag}</span>
         <span style={{ color: '#475569', fontFamily: 'monospace', fontSize: '9px' }}>CAP {venue.capacity.toLocaleString()}</span>
         <span style={{ color: venue.congestion >= 9 ? '#ef4444' : '#f59e0b', fontFamily: 'monospace', fontSize: '9px' }}>{'▓'.repeat(venue.congestion)}{'░'.repeat(10 - venue.congestion)} {venue.congestion}/10</span>
-        <span style={{ color: '#475569', fontFamily: 'monospace', fontSize: '9px' }}>SEC ~{venue.security_wait}د</span>
-        {venue.no_parking && <span style={{ color: '#ef4444', fontFamily: 'monospace', fontSize: '9px' }}>🚫 NO PARKING</span>}
+        <span style={{ color: '#475569', fontFamily: 'monospace', fontSize: '9px' }}>{t(lang, 'security')} ~{venue.security_wait}m</span>
+        {venue.no_parking && <span style={{ color: '#ef4444', fontFamily: 'monospace', fontSize: '9px' }}>🚫 {t(lang, 'no_parking')}</span>}
         {venue.altitude_m && <span style={{ color: '#f59e0b', fontFamily: 'monospace', fontSize: '9px' }}>⛰️ {venue.altitude_m}m</span>}
       </div>
 
-      {/* ── FORM ── */}
+      {/* FORM */}
       <div style={{ background: 'rgba(10,18,36,0.9)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '18px', marginBottom: '14px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '12px', marginBottom: '12px' }}>
           <div>
-            <label style={S.lbl}>MATCH — المباراة</label>
-            <select style={{ ...S.inp, cursor: 'pointer' }} value={matchIdx} onChange={e => { setMatchIdx(+e.target.value); setResult(null) }}>
-              {venue.matches.map((m, i) => <option key={i} value={i}>{m.label_ar}</option>)}
+            <label style={lbl}>{t(lang, 'select_match').toUpperCase()}</label>
+            <select style={{ ...inp, cursor: 'pointer' }} value={matchIdx} onChange={e => { setMatchIdx(+e.target.value); setResult(null) }}>
+              {venue.matches.map((m, i) => <option key={i} value={i}>{m.label[lang] || m.label.en}</option>)}
             </select>
           </div>
           <div>
-            <label style={S.lbl}>KICKOFF — ركلة البداية</label>
-            <div style={{ ...S.inp, color: '#f59e0b', fontFamily: 'monospace', fontSize: '13px', fontWeight: 700 }}>
-              {ft(match.date)} · {new Date(match.date).toLocaleDateString('ar-SA', { day: 'numeric', month: 'long' })}
+            <label style={lbl}>{t(lang, 'kickoff').toUpperCase()}</label>
+            <div style={{ ...inp, color: '#f59e0b', fontFamily: 'monospace', fontSize: '13px', fontWeight: 700 }}>
+              {ft(match.date)} · {new Date(match.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
             </div>
           </div>
           <div>
-            <label style={S.lbl}>MOBILITY — طريقة التنقل</label>
-            <select style={{ ...S.inp, cursor: 'pointer' }} value={mobility} onChange={e => setMobility(e.target.value)}>
-              <option value="Standard">عادي</option>
-              <option value="Fast Walking">مشي سريع</option>
-              <option value="Low Cost">اقتصادي</option>
-              <option value="Minimal Transits">أقل تحويلات</option>
+            <label style={lbl}>{t(lang, 'mobility').toUpperCase()}</label>
+            <select style={{ ...inp, cursor: 'pointer' }} value={mobility} onChange={e => setMobility(e.target.value)}>
+              <option value="Standard">{t(lang, 'mob_standard')}</option>
+              <option value="Fast Walking">{t(lang, 'mob_fast')}</option>
+              <option value="Low Cost">{t(lang, 'mob_cheap')}</option>
+              <option value="Minimal Transits">{t(lang, 'mob_min')}</option>
             </select>
           </div>
         </div>
 
         <div style={{ marginBottom: '10px' }}>
-          <label style={S.lbl}>ORIGIN — موقعك الحالي</label>
-          <input style={S.inp} value={origin} onChange={e => setOrigin(e.target.value)} placeholder="أدخل موقعك" />
+          <label style={lbl}>{t(lang, 'origin').toUpperCase()}</label>
+          <input style={inp} value={origin} onChange={e => setOrigin(e.target.value)} placeholder={t(lang, 'choose_origin')} />
         </div>
 
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
@@ -193,66 +201,66 @@ export default function Home() {
         </div>
 
         <button onClick={generate} disabled={loading}
-          style={{ width: '100%', padding: '13px', background: loading ? 'rgba(245,158,11,0.06)' : 'rgba(245,158,11,0.12)', border: `1px solid ${loading ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.4)'}`, borderRadius: '8px', color: loading ? '#78350f' : '#f59e0b', fontFamily: "'IBM Plex Sans Arabic', monospace", fontSize: '14px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-          {loading ? <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span> جاري احتساب المسار...</> : '⚡ احسب المسار الأمثل'}
+          style={{ width: '100%', padding: '13px', background: loading ? 'rgba(245,158,11,0.06)' : 'rgba(245,158,11,0.12)', border: `1px solid ${loading ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.4)'}`, borderRadius: '8px', color: loading ? '#78350f' : '#f59e0b', fontSize: '14px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          {loading ? <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span> {t(lang, 'calculating')}</> : t(lang, 'calculate')}
         </button>
       </div>
 
-      {/* ── ALSDT BANNER ── */}
+      {/* ALSDT */}
       {alsdt && (
         <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: '10px', padding: '12px 16px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <div>
-            <div style={{ color: '#f87171', fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.12em' }}>ALSDT — آخر موعد آمن للمغادرة</div>
-            <div style={{ color: '#fca5a5', fontFamily: "'IBM Plex Sans Arabic', sans-serif", fontSize: '11px', marginTop: '2px' }}>لا تغادر بعد هذا الوقت</div>
+            <div style={{ color: '#f87171', fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.12em' }}>ALSDT</div>
+            <div style={{ color: '#fca5a5', fontSize: '11px', marginTop: '2px' }}>{t(lang, 'alsdt_warn')}</div>
           </div>
           <div style={{ color: '#ef4444', fontFamily: 'monospace', fontSize: '30px', fontWeight: 900 }}>{ft(alsdt.toISOString())}</div>
         </div>
       )}
 
-      {/* ── ERROR ── */}
-      {error && <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '12px 16px', marginBottom: '14px', color: '#f87171', fontFamily: "'IBM Plex Sans Arabic', sans-serif", fontSize: '13px', direction: 'rtl' }}>⚠️ {error}</div>}
+      {/* ERROR */}
+      {error && <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '12px 16px', marginBottom: '14px', color: '#f87171', fontSize: '13px' }}>⚠️ {error}</div>}
 
-      {/* ── RESULTS ── */}
+      {/* RESULTS */}
       {result?.strategies && (
         <>
           <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-            {Object.keys(STRATS).map(k => (
+            {Object.entries(strats).map(([k, cfg]) => (
               <button key={k} onClick={() => setActiveStrat(k)}
-                style={{ flex: 1, padding: '9px', borderRadius: '6px', border: `1px solid ${activeStrat === k ? STRATS[k].color + '55' : 'rgba(255,255,255,0.06)'}`, background: activeStrat === k ? `${STRATS[k].color}10` : 'transparent', color: activeStrat === k ? STRATS[k].color : '#334155', fontFamily: "'IBM Plex Sans Arabic', sans-serif", fontSize: '11px', cursor: 'pointer', fontWeight: activeStrat === k ? 700 : 400 }}>
-                {STRATS[k].label}
+                style={{ flex: 1, padding: '9px', borderRadius: '6px', border: `1px solid ${activeStrat === k ? cfg.color + '55' : 'rgba(255,255,255,0.06)'}`, background: activeStrat === k ? `${cfg.color}10` : 'transparent', color: activeStrat === k ? cfg.color : '#334155', fontSize: '11px', cursor: 'pointer', fontWeight: activeStrat === k ? 700 : 400 }}>
+                {cfg.label}
               </button>
             ))}
           </div>
 
           {(() => {
             const s   = result.strategies[activeStrat]
-            const cfg = STRATS[activeStrat]
+            const cfg = strats[activeStrat]
             if (!s) return null
             return (
               <div style={{ background: 'rgba(10,18,36,0.9)', border: `1px solid ${cfg.color}28`, borderRadius: '10px', padding: '16px', marginBottom: '12px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: `${cfg.color}15`, borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
                   <div style={{ background: 'rgba(10,18,36,0.95)', padding: '10px 12px' }}>
-                    <div style={{ color: '#334155', fontFamily: 'monospace', fontSize: '8px', letterSpacing: '0.12em' }}>DEPART</div>
+                    <div style={{ color: '#334155', fontFamily: 'monospace', fontSize: '8px', letterSpacing: '0.12em' }}>{t(lang, 'depart').toUpperCase()}</div>
                     <div style={{ color: '#e2e8f0', fontFamily: 'monospace', fontSize: '22px', fontWeight: 700 }}>{ft(s.recommended_departure_time)}</div>
                   </div>
                   <div style={{ background: 'rgba(10,18,36,0.95)', padding: '10px 12px', textAlign: 'right' }}>
-                    <div style={{ color: '#334155', fontFamily: 'monospace', fontSize: '8px', letterSpacing: '0.12em' }}>ARRIVE</div>
+                    <div style={{ color: '#334155', fontFamily: 'monospace', fontSize: '8px', letterSpacing: '0.12em' }}>{t(lang, 'arrive').toUpperCase()}</div>
                     <div style={{ color: cfg.color, fontFamily: 'monospace', fontSize: '22px', fontWeight: 700 }}>{ft(s.estimated_arrival_time)}</div>
                   </div>
                 </div>
-                <div style={{ color: cfg.color, fontFamily: 'monospace', fontSize: '10px', textAlign: 'center', marginBottom: '12px' }}>{fd(s.total_duration_minutes)} إجمالي</div>
+                <div style={{ color: cfg.color, fontFamily: 'monospace', fontSize: '10px', textAlign: 'center', marginBottom: '12px' }}>{fd(s.total_duration_minutes)} {t(lang, 'total')}</div>
                 {(s.steps || []).map((st, i) => {
                   const mode = (st.mode || 'WALK').toUpperCase()
                   const col  = MODE_COLORS[mode] || '#f59e0b'
                   return (
-                    <div key={i} style={{ background: 'rgba(255,255,255,0.02)', borderLeft: `2px solid ${col}`, borderRadius: '6px', padding: '10px 12px', marginBottom: '6px', direction: 'rtl' }}>
-                      <div style={{ color: '#e2e8f0', fontFamily: "'IBM Plex Sans Arabic', sans-serif", fontSize: '12px', lineHeight: 1.6 }}>{MODE_ICONS[mode] || '🔹'} {st.instruction_ar}</div>
+                    <div key={i} style={{ background: 'rgba(255,255,255,0.02)', borderLeft: dir === 'ltr' ? `2px solid ${col}` : 'none', borderRight: dir === 'rtl' ? `2px solid ${col}` : 'none', borderRadius: '6px', padding: '10px 12px', marginBottom: '6px' }}>
+                      <div style={{ color: '#e2e8f0', fontSize: '12px', lineHeight: 1.6 }}>{MODE_ICONS[mode] || '🔹'} {st.instruction_ar}</div>
                       <div style={{ display: 'flex', gap: '8px', marginTop: '5px', flexWrap: 'wrap' }}>
                         <span style={{ color: '#475569', fontFamily: 'monospace', fontSize: '9px' }}>{ft(st.departure_time)} → {ft(st.arrival_time)}</span>
                         {st.line_or_flight_id && <span style={{ color: col, fontFamily: 'monospace', fontSize: '9px', background: `${col}15`, padding: '0 5px', borderRadius: '3px' }}>{st.line_or_flight_id}</span>}
                         {st.fare_estimate && <span style={{ color: '#64748b', fontFamily: 'monospace', fontSize: '9px' }}>{st.fare_estimate}</span>}
                       </div>
-                      {st.ai_context_note_ar && <div style={{ color: '#334155', fontFamily: "'IBM Plex Sans Arabic', sans-serif", fontSize: '10px', marginTop: '6px', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '6px' }}>🤖 {st.ai_context_note_ar}</div>}
+                      {st.ai_context_note_ar && <div style={{ color: '#334155', fontSize: '10px', marginTop: '6px', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '6px' }}>🤖 {st.ai_context_note_ar}</div>}
                     </div>
                   )
                 })}
@@ -260,19 +268,19 @@ export default function Home() {
             )
           })()}
 
-          {/* ── EXPORT ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '8px', marginBottom: '14px' }}>
-            <button onClick={() => exportICS(venue, match, alsdt?.toISOString())}
-              style={{ padding: '10px', background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '8px', color: '#10b981', fontFamily: "'IBM Plex Sans Arabic', sans-serif", fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
-              📅 تصدير للتقويم
+          {/* EXPORT */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: '8px', marginBottom: '14px' }}>
+            <button onClick={() => exportICS(venue, match, alsdt?.toISOString(), lang)}
+              style={{ padding: '10px', background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '8px', color: '#10b981', fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
+              📅 {t(lang, 'export_cal')}
             </button>
             <button onClick={copyPlan}
-              style={{ padding: '10px', background: 'rgba(167,139,250,0.07)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: '8px', color: '#a78bfa', fontFamily: "'IBM Plex Sans Arabic', sans-serif", fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
-              {copied ? '✅ تم النسخ' : '📋 نسخ للواتساب'}
+              style={{ padding: '10px', background: 'rgba(167,139,250,0.07)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: '8px', color: '#a78bfa', fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
+              {copied ? t(lang, 'copied') : `📋 ${t(lang, 'copy_plan')}`}
             </button>
             <button onClick={() => window.print()}
-              style={{ padding: '10px', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '8px', color: '#f59e0b', fontFamily: "'IBM Plex Sans Arabic', sans-serif", fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
-              🖨️ طباعة / PDF
+              style={{ padding: '10px', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '8px', color: '#f59e0b', fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
+              🖨️ {t(lang, 'print')}
             </button>
           </div>
         </>
@@ -281,7 +289,7 @@ export default function Home() {
       {!result && !loading && (
         <div style={{ textAlign: 'center', padding: '40px', color: '#1e293b' }}>
           <div style={{ fontSize: '40px', marginBottom: '10px' }}>🏟️</div>
-          <div style={{ fontFamily: 'monospace', fontSize: '10px', letterSpacing: '0.1em' }}>اختر ملعبك واضغط احسب</div>
+          <div style={{ fontFamily: 'monospace', fontSize: '10px', letterSpacing: '0.1em' }}>{t(lang, 'calculate').toUpperCase()}</div>
         </div>
       )}
 
@@ -293,7 +301,8 @@ export default function Home() {
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
         @keyframes spin  { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         select option { background:#0a1224; color:#e2e8f0; }
-        ::-webkit-scrollbar { width:3px; } ::-webkit-scrollbar-thumb { background:rgba(245,158,11,0.2); border-radius:2px; }
+        ::-webkit-scrollbar { width:3px; }
+        ::-webkit-scrollbar-thumb { background:rgba(245,158,11,0.2); border-radius:2px; }
       `}</style>
     </div>
   )
