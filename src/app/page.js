@@ -294,7 +294,16 @@ export default function Home() {
           style={{ width: '100%', padding: '13px', background: loading ? 'rgba(245,158,11,0.06)' : usage >= FREE_LIMIT ? 'rgba(245,158,11,0.2)' : 'rgba(245,158,11,0.12)', border: `1px solid ${loading ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.4)'}`, borderRadius: '8px', color: loading ? '#78350f' : '#f59e0b', fontSize: '14px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
           {loading
             ? <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span> {t(lang, 'calculating')}</>
-            : usage >= FREE_LIMIT ? '🔒 Upgrade to Pro — $5' : t(lang, 'calculate')}
+            : '🔒 Upgrade to Pro — $5'}
+        </button>
+
+        {usage >= FREE_LIMIT && (
+          <button
+            onClick={() => setShowPaywall(true)}
+            style={{ width: '100%', marginTop: '8px', padding: '13px', background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.5)', borderRadius: '8px', color: '#f59e0b', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+            💳 احصل على الوصول الكامل — $5
+          </button>
+        )}
         </button>
       </div>
 
