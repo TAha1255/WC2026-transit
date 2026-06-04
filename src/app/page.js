@@ -84,7 +84,7 @@ function PaywallPopup({ lang, onClose }) {
         </div>
 
         <a
-          href="https://YOUR_LEMON_SQUEEZY_LINK"
+          onClick={(e) => { e.preventDefault(); setShowPaywall(true) }}
           target="_blank"
           rel="noreferrer"
           style={{ display: 'block', padding: '14px', background: '#f59e0b', color: '#000', borderRadius: '8px', fontWeight: 700, fontSize: '15px', textDecoration: 'none', marginBottom: '12px' }}>
