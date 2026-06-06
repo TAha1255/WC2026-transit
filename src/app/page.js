@@ -29,7 +29,7 @@ function PaymentModal({ lang, onClose }) {
         </div>
 
         {/* PayPal */}
-        <a href="https://www.paypal.com/paypalme/tahafaradj/5"
+        <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=tahafaradj%40yahoo.com&amount=5&currency_code=USD&item_name=WC2026+Transit+AI+Pro"
           style={{display:'block',padding:'12px',background:'#003087',borderRadius:'8px',color:'white',fontSize:'14px',fontWeight:700,textAlign:'center',textDecoration:'none',marginBottom:'10px'}}>
           💳 Pay with PayPal
         </a>
