@@ -238,13 +238,34 @@ export default function Home() {
             : t(lang,'calculate')}
         </button>
 
-        {/* UPGRADE BUTTON — يظهر فقط لما تنتهي الخطط المجانية */}
-        {usage >= FREE_LIMIT && (
-          <button onClick={()=>setShowPaywall(true)}
-            style={{width:'100%',padding:'13px',background:'rgba(245,158,11,0.2)',border:'2px solid rgba(245,158,11,0.6)',borderRadius:'8px',color:'#f59e0b',fontSize:'14px',fontWeight:700,cursor:'pointer',textAlign:'center',pointerEvents:'all',position:'relative',zIndex:10}}>
-            💳 احصل على الوصول الكامل — $5
-          </button>
-        )}
+        {/* placeholder */}
+      </div>
+
+      {/* FLOATING UPGRADE BUTTON */}
+      {usage >= FREE_LIMIT && (
+        <div
+          onClick={() => setShowPaywall(true)}
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 999,
+            background: '#f59e0b',
+            color: '#000',
+            padding: '16px 32px',
+            borderRadius: '50px',
+            fontSize: '15px',
+            fontWeight: 900,
+            cursor: 'pointer',
+            boxShadow: '0 0 40px rgba(245,158,11,0.5)',
+            whiteSpace: 'nowrap',
+            userSelect: 'none',
+          }}>
+          💳 احصل على الوصول الكامل — $5
+        </div>
+      )}
+      <div style={{display:'none'}}>
       </div>
 
       {/* ALSDT */}
