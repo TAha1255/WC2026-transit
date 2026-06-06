@@ -241,7 +241,7 @@ export default function Home() {
         {/* UPGRADE BUTTON — يظهر فقط لما تنتهي الخطط المجانية */}
         {usage >= FREE_LIMIT && (
           <button onClick={()=>setShowPaywall(true)}
-            style={{width:'100%',padding:'13px',background:'rgba(245,158,11,0.2)',border:'2px solid rgba(245,158,11,0.6)',borderRadius:'8px',color:'#f59e0b',fontSize:'14px',fontWeight:700,cursor:'pointer',textAlign:'center'}}>
+            style={{width:'100%',padding:'13px',background:'rgba(245,158,11,0.2)',border:'2px solid rgba(245,158,11,0.6)',borderRadius:'8px',color:'#f59e0b',fontSize:'14px',fontWeight:700,cursor:'pointer',textAlign:'center',pointerEvents:'all',position:'relative',zIndex:10}}>
             💳 احصل على الوصول الكامل — $5
           </button>
         )}
@@ -311,15 +311,15 @@ export default function Home() {
 
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:'8px',marginBottom:'14px'}}>
             <button onClick={()=>exportICS(venue,match,alsdt?.toISOString(),lang)}
-              style={{padding:'10px',background:'rgba(16,185,129,0.07)',border:'1px solid rgba(16,185,129,0.25)',borderRadius:'8px',color:'#10b981',fontSize:'12px',cursor:'pointer',textAlign:'center'}}>
+              style={{padding:'10px',background:'rgba(16,185,129,0.07)',border:'1px solid rgba(16,185,129,0.25)',borderRadius:'8px',color:'#10b981',fontSize:'12px',cursor:'pointer',textAlign:'center',pointerEvents:'all',position:'relative',zIndex:10}}>
               📅 {t(lang,'export_cal')}
             </button>
             <button onClick={copyPlan}
-              style={{padding:'10px',background:'rgba(167,139,250,0.07)',border:'1px solid rgba(167,139,250,0.25)',borderRadius:'8px',color:'#a78bfa',fontSize:'12px',cursor:'pointer',textAlign:'center'}}>
+              style={{padding:'10px',background:'rgba(167,139,250,0.07)',border:'1px solid rgba(167,139,250,0.25)',borderRadius:'8px',color:'#a78bfa',fontSize:'12px',cursor:'pointer',textAlign:'center',pointerEvents:'all',position:'relative',zIndex:10}}>
               {copied?t(lang,'copied'):`📋 ${t(lang,'copy_plan')}`}
             </button>
             <button onClick={()=>window.print()}
-              style={{padding:'10px',background:'rgba(245,158,11,0.07)',border:'1px solid rgba(245,158,11,0.25)',borderRadius:'8px',color:'#f59e0b',fontSize:'12px',cursor:'pointer',textAlign:'center'}}>
+              style={{padding:'10px',background:'rgba(245,158,11,0.07)',border:'1px solid rgba(245,158,11,0.25)',borderRadius:'8px',color:'#f59e0b',fontSize:'12px',cursor:'pointer',textAlign:'center',pointerEvents:'all',position:'relative',zIndex:10}}>
               🖨️ {t(lang,'print')}
             </button>
           </div>
