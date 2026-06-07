@@ -29,7 +29,7 @@ function PaymentModal({ lang, onClose }) {
         </div>
 
         {/* PayPal */}
-        <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=tahafaradj%40yahoo.com&amount=5&currency_code=USD&item_name=WC2026+Transit+AI+Pro"
+        <a href="https://www.paypal.com/paypalme/tahafaradj/5"
           style={{display:'block',padding:'12px',background:'#003087',borderRadius:'8px',color:'white',fontSize:'14px',fontWeight:700,textAlign:'center',textDecoration:'none',marginBottom:'10px'}}>
           💳 Pay with PayPal
         </a>
@@ -344,8 +344,16 @@ export default function Home() {
         </div>
       )}
 
-      <div style={{marginTop:'24px',paddingBottom:'60px',textAlign:'center',color:'#0f172a',fontFamily:'monospace',fontSize:'8px'}}>
+      <div style={{marginTop:'24px',paddingBottom:'80px',textAlign:'center',color:'#0f172a',fontFamily:'monospace',fontSize:'8px'}}>
         WC2026 TRANSIT AI · POWERED BY CLAUDE · FIFA WORLD CUP 2026™
+      </div>
+
+      {/* KO-FI BUTTON */}
+      <div style={{position:'fixed',bottom:'24px',right:'16px',zIndex:997}}>
+        <a href="https://ko-fi.com/tahalfaraj" target="_blank" rel="noreferrer"
+          style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 16px',background:'#FF5E5B',borderRadius:'50px',color:'white',textDecoration:'none',fontSize:'13px',fontWeight:700,boxShadow:'0 4px 20px rgba(255,94,91,0.4)'}}>
+          ☕ {lang==='ar'?'ادعم المشروع':'Support Us'}
+        </a>
       </div>
 
       <style>{`
