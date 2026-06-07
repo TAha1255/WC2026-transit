@@ -28,11 +28,11 @@ function PaymentModal({ lang, onClose }) {
           <div style={{color:'#64748b',fontSize:'11px'}}>One-time · Full tournament</div>
         </div>
 
-        {/* PayPal */}
-        <a href="https://www.paypal.com/paypalme/tahafaradj/5"
-          style={{display:'block',padding:'12px',background:'#003087',borderRadius:'8px',color:'white',fontSize:'14px',fontWeight:700,textAlign:'center',textDecoration:'none',marginBottom:'10px'}}>
-          💳 Pay with PayPal
-        </a>
+      {/* Lemon Squeezy */}
+<a href="https://wc2026transitai.lemonsqueezy.com/checkout/buy/e5598070-a109-4c36-ac5a-9b34cdafbbb3"
+  style={{display:'block',padding:'12px',background:'#f59e0b',borderRadius:'8px',color:'#000',fontSize:'14px',fontWeight:700,textAlign:'center',textDecoration:'none',marginBottom:'10px'}}>
+  💳 {lang==='ar'?'اشترك الآن — $5':'Get Full Access — $5'}
+</a>
 
         <div style={{textAlign:'center',color:'#334155',fontSize:'11px',margin:'8px 0'}}>── OR CRYPTO ──</div>
 
